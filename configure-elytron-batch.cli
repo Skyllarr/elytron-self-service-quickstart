@@ -1,0 +1,33 @@
+batch
+
+/subsystem=elytron/filesystem-realm=initialFsRealm:add(path=fs-realm-users,relative-to=jboss.server.config.dir)
+
+/subsystem=elytron/filesystem-realm=initialFsRealm:add-identity(identity=user1)
+
+/subsystem=elytron/filesystem-realm=initialFsRealm:set-password(clear={password="passwordUser1"}, identity=user1)
+
+/subsystem=elytron/filesystem-realm=initialFsRealm:add-identity(identity=admin)
+
+/subsystem=elytron/filesystem-realm=initialFsRealm:set-password(clear={password="passwordAdmin"}, identity=admin)
+
+/subsystem=elytron/filesystem-realm=initialFsRealm:add-identity-attribute(identity=admin, name=Roles, value=["Admin", "Guest"])
+
+/subsystem=elytron/filesystem-realm=initialFsRealm:add-identity-attribute(identity=user1, name=Roles, value=["User", "Guest"])
+
+/subsystem=elytron/filesystem-realm=initialFsRealm:add-identity-attribute(identity=user1, name=Email, value=["user1@email.com", "user1SecondEmail@email.com"])
+
+/subsystem=elytron/filesystem-realm=initialFsRealm:add-identity-attribute(identity=admin, name=Email, value=["admin@email.com"])
+
+/subsystem=elytron/filesystem-realm=initialFsRealm:add-identity-attribute(identity=user1, name="Full name", value=["Jane Doe"])
+
+/subsystem=elytron/simple-role-decoder=from-roles-attribute:add(attribute=Roles)
+
+/subsystem=elytron/security-domain=initialFsSD:add(realms=[{realm=initialFsRealm,role-decoder=from-roles-attribute}],default-realm=initialFsRealm,permission-mapper=default-permission-mapper)
+
+/subsystem=elytron/http-authentication-factory=initial-fs-http-auth:add(http-server-mechanism-factory=global,security-domain=initialFsSD,mechanism-configurations=[{mechanism-name=BASIC,mechanism-realm-configurations=[{realm-name=initialApplicationDomain}]}])
+
+/subsystem=undertow/application-security-domain=initialApplicationDomain:add(http-authentication-factory=initial-fs-http-auth)
+
+run-batch
+
+reload
