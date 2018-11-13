@@ -26,6 +26,12 @@
             <artifactId>wildfly-elytron</artifactId>
             <version>1.7.0.CR3</version>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/org.json/json -->
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20180813</version>
+        </dependency>
     </dependencies>
 
     <build>
