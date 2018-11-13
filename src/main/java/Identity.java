@@ -2,17 +2,26 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.SecurityContext;
+import java.security.NoSuchAlgorithmException;
 import java.security.Principal;
+import java.security.spec.InvalidKeySpecException;
 import java.util.*;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.wildfly.security.WildFlyElytronProvider;
 import org.wildfly.security.auth.server.ModifiableRealmIdentity;
 import org.wildfly.security.auth.server.RealmUnavailableException;
 import org.wildfly.security.auth.server.SecurityDomain;
 import org.wildfly.security.auth.server.SecurityIdentity;
 import org.wildfly.security.authz.Attributes;
 import org.wildfly.security.authz.MapAttributes;
+import org.wildfly.security.credential.Credential;
+import org.wildfly.security.credential.PasswordCredential;
+import org.wildfly.security.password.PasswordFactory;
+import org.wildfly.security.password.spec.ClearPasswordSpec;
+
+import static org.wildfly.security.password.interfaces.ClearPassword.ALGORITHM_CLEAR;
 
 
 @Path("/")
@@ -104,10 +113,19 @@ public class Identity {
 
     private List<String> getValuesFromJson(JSONArray jsonArray) {
         List<String> list = new ArrayList<String>();
-        for (int i=0; i<jsonArray.length(); i++) {
-            list.add( jsonArray.getString(i));
+        for (int i = 0; i < jsonArray.length(); i++) {
+            list.add(jsonArray.getString(i));
         }
         return list;
+    }
+
+    private void updatePassword(ModifiableRealmIdentity modifiableIdentity, String newPassword) throws Exception {
+        PasswordFactory passwordFactory = PasswordFactory.getInstance(ALGORITHM_CLEAR, new WildFlyElytronProvider());
+        PasswordCredential updatedPassword = new PasswordCredential(passwordFactory.generatePassword(new ClearPasswordSpec(newPassword.toCharArray())));
+        HashSet<Credential> newCredentials = new HashSet<Credential>();
+        newCredentials.add(updatedPassword);
+        modifiableIdentity.setCredentials(newCredentials);
+        modifiableIdentity.dispose();
     }
 
     private void updateCredentials(String json) throws RealmUnavailableException {
