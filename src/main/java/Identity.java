@@ -28,6 +28,7 @@ import static org.wildfly.security.password.interfaces.ClearPassword.ALGORITHM_C
 public class Identity {
 
     public static final String PASSWORD = "password";
+    public static final String ATTRIBUTES = "attributes";
 
     @Context
     private SecurityContext securityContext;
@@ -83,7 +84,36 @@ public class Identity {
     }
 
     private String updateIdentity(String json) throws Exception {
-        return updateAttributes(new JSONObject(json.trim()).toString());
+        ModifiableRealmIdentity modifiableIdentity = SecurityDomain.getCurrent().getIdentityForUpdate(securityContext.getUserPrincipal());
+        JSONObject jsonObj = new JSONObject(json.trim());
+        if (jsonObj.keySet().contains(ATTRIBUTES)) {
+            if (jsonObj.getJSONObject(ATTRIBUTES).keySet().contains(KEY_ROLES)) {
+                modifiableIdentity.dispose();
+                return "Cannot modify own roles.";
+            } else {
+                updateAttributes(modifiableIdentity, jsonObj);
+            }
+        }
+        if (jsonObj.keySet().contains(PASSWORD)) {
+            updatePassword(modifiableIdentity, jsonObj.getString(PASSWORD));
+        }
+        modifiableIdentity.dispose();
+        return "Successfully updated";
+    }
+
+    private void updateAttributes(ModifiableRealmIdentity modifiableIdentity, JSONObject jsonObj) throws RealmUnavailableException {
+        Iterator<String> keys = jsonObj.getJSONObject(ATTRIBUTES).keys();
+        MapAttributes attributes = new MapAttributes(modifiableIdentity.getAttributes());
+        while (keys.hasNext()) {
+            String key = keys.next();
+            List<String> values = getValuesFromJson(new JSONArray(jsonObj.getJSONObject(ATTRIBUTES).get(key).toString()));
+            if (attributes.containsKey(key)) {
+                attributes.copyAndReplace(key, values);
+            } else {
+                attributes.addAll(key, values);
+            }
+        }
+        modifiableIdentity.setAttributes(attributes);
     }
 
     private String getIdentityInformation() throws RealmUnavailableException {
@@ -97,33 +127,6 @@ public class Identity {
         }
         return "Hello " + principalName + "! \n" +
                 "You have " + identity.getAttributes().size() + " attributes:\n\n" + stringAttributes;
-    }
-
-    private String updateAttributes(String json) throws Exception {
-        JSONObject jsonObj = new JSONObject(json.trim());
-        if (jsonObj.keySet().contains(KEY_ROLES)) {
-            return "Cannot modify own roles.";
-        } else {
-            ModifiableRealmIdentity modifiableIdentity = SecurityDomain.getCurrent().getIdentityForUpdate(securityContext.getUserPrincipal());
-            MapAttributes attributes = new MapAttributes(modifiableIdentity.getAttributes());
-            Iterator<String> keys = jsonObj.keys();
-            while (keys.hasNext()) {
-                String key = keys.next();
-                if (key.equalsIgnoreCase(PASSWORD)) {
-                    updatePassword(modifiableIdentity, jsonObj.getString(key));
-                    continue;
-                }
-                List<String> values = getValuesFromJson(new JSONArray(jsonObj.get(key).toString()));
-                if (attributes.containsKey(key)) {
-                    attributes.copyAndReplace(key, values);
-                } else {
-                    attributes.addAll(key, values);
-                }
-            }
-            modifiableIdentity.setAttributes(attributes);
-            modifiableIdentity.dispose();
-            return "Successfully updated";
-        }
     }
 
     private List<String> getValuesFromJson(JSONArray jsonArray) {
