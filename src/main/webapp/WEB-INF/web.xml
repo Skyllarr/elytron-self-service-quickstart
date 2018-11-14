@@ -1,22 +1,9 @@
 <web-app>
-    <security-constraint>
-        <web-resource-collection>
-            <web-resource-name>Admin page</web-resource-name>
-            <url-pattern>/rest/admin/*</url-pattern>
-        </web-resource-collection>
-        <auth-constraint>
-            <role-name>Admin</role-name>
-        </auth-constraint>
-    </security-constraint>
 
     <security-constraint>
         <web-resource-collection>
-            <web-resource-name>User page</web-resource-name>
-            <url-pattern>/rest/user/*</url-pattern>
+            <url-pattern>/rest/*</url-pattern>
         </web-resource-collection>
-        <auth-constraint>
-            <role-name>User</role-name>
-        </auth-constraint>
     </security-constraint>
 
     <security-role>
@@ -29,9 +16,18 @@
         <role-name>User</role-name>
     </security-role>
 
+    <security-role>
+        <description>The role that is required to log in to /guest</description>
+        <role-name>Guest</role-name>
+    </security-role>
+
     <!-- Configure login to be HTTP Basic -->
     <!--<login-config>-->
         <!--<auth-method>BASIC</auth-method>-->
         <!--<realm-name>initialApplicationDomain</realm-name>-->
     <!--</login-config>-->
+    <context-param>
+        <param-name>resteasy.role.based.security</param-name>
+        <param-value>true</param-value>
+    </context-param>
 </web-app>

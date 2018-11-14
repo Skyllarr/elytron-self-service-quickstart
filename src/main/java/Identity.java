@@ -1,10 +1,10 @@
+import javax.annotation.security.PermitAll;
+import javax.annotation.security.RolesAllowed;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.SecurityContext;
-import java.security.NoSuchAlgorithmException;
 import java.security.Principal;
-import java.security.spec.InvalidKeySpecException;
 import java.util.*;
 
 import org.json.JSONArray;
@@ -21,8 +21,8 @@ import org.wildfly.security.credential.PasswordCredential;
 import org.wildfly.security.password.PasswordFactory;
 import org.wildfly.security.password.spec.ClearPasswordSpec;
 
+import static org.wildfly.security.authz.RoleDecoder.KEY_ROLES;
 import static org.wildfly.security.password.interfaces.ClearPassword.ALGORITHM_CLEAR;
-
 
 @Path("/")
 public class Identity {
@@ -33,7 +33,7 @@ public class Identity {
     @GET
     @Path("/admin")
     @Produces("text/plain")
-//    @RolesAllowed({"Admin"}) TODO why this doesn't work?
+    @RolesAllowed("Admin")
     public String attributesAdmin() throws RealmUnavailableException {
         return getIdentityInformation();
     }
@@ -41,11 +41,13 @@ public class Identity {
     @GET
     @Path("/user")
     @Produces("text/plain")
+    @RolesAllowed("User")
     public String attributesUser() throws RealmUnavailableException {
         return getIdentityInformation();
     }
 
     @GET
+    @PermitAll
     @Path("/guest")
     @Produces("text/plain")
     public String attributesGuest() throws RealmUnavailableException {
@@ -55,6 +57,7 @@ public class Identity {
     @GET
     @Path("/admin/update")
     @Produces("text/plain")
+    @RolesAllowed("Admin")
     public String credentialsGuest() throws RealmUnavailableException {
         return getIdentityInformation();
     }
@@ -63,6 +66,7 @@ public class Identity {
     @Path("/user/update")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("text/plain")
+    @RolesAllowed("User")
     public String updateUserAttributes(String json) throws RealmUnavailableException {
         return updateIdentity(json);
     }
@@ -71,13 +75,13 @@ public class Identity {
     @Path("/admin/update")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("text/plain")
+    @RolesAllowed("Admin")
     public String updateAdminAttributes(String json) throws RealmUnavailableException {
         return updateIdentity(json);
     }
 
     private String updateIdentity(String json) throws RealmUnavailableException {
-        updateAttributes(new JSONObject(json.trim()).toString());
-        return "Successfully updated";
+        return updateAttributes(new JSONObject(json.trim()).toString());
     }
 
     private String getIdentityInformation() throws RealmUnavailableException {
@@ -93,22 +97,27 @@ public class Identity {
                 "You have " + identity.getAttributes().size() + " attributes:\n\n" + stringAttributes;
     }
 
-    private void updateAttributes(String json) throws RealmUnavailableException {
-        ModifiableRealmIdentity modifiableIdentity = SecurityDomain.getCurrent().getIdentityForUpdate(securityContext.getUserPrincipal());
-        MapAttributes attributes = new MapAttributes(modifiableIdentity.getAttributes());
+    private String updateAttributes(String json) throws RealmUnavailableException {
         JSONObject jsonObj = new JSONObject(json.trim());
-        Iterator<String> keys = jsonObj.keys();
-        while (keys.hasNext()) {
-            String key = keys.next();
-            List<String> values = getValuesFromJson(new JSONArray(jsonObj.get(key).toString()));
-            if (attributes.containsKey(key)) {
-                attributes.copyAndReplace(key, values);
-            } else {
-                attributes.addAll(key, values);
+        if (jsonObj.keySet().contains(KEY_ROLES)) {
+            return "Cannot modify own roles.";
+        } else {
+            ModifiableRealmIdentity modifiableIdentity = SecurityDomain.getCurrent().getIdentityForUpdate(securityContext.getUserPrincipal());
+            MapAttributes attributes = new MapAttributes(modifiableIdentity.getAttributes());
+            Iterator<String> keys = jsonObj.keys();
+            while (keys.hasNext()) {
+                String key = keys.next();
+                List<String> values = getValuesFromJson(new JSONArray(jsonObj.get(key).toString()));
+                if (attributes.containsKey(key)) {
+                    attributes.copyAndReplace(key, values);
+                } else {
+                    attributes.addAll(key, values);
+                }
             }
+            modifiableIdentity.setAttributes(attributes);
+            modifiableIdentity.dispose();
+            return "Successfully updated";
         }
-        modifiableIdentity.setAttributes(attributes);
-        modifiableIdentity.dispose();
     }
 
     private List<String> getValuesFromJson(JSONArray jsonArray) {
