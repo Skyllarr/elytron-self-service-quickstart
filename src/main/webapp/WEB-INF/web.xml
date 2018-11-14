@@ -17,15 +17,9 @@
     </security-role>
 
     <security-role>
-        <description>The role that is required to log in to /guest</description>
         <role-name>Guest</role-name>
     </security-role>
 
-    <!-- Configure login to be HTTP Basic -->
-    <!--<login-config>-->
-        <!--<auth-method>BASIC</auth-method>-->
-        <!--<realm-name>initialApplicationDomain</realm-name>-->
-    <!--</login-config>-->
     <context-param>
         <param-name>resteasy.role.based.security</param-name>
         <param-value>true</param-value>

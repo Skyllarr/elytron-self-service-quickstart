@@ -27,6 +27,8 @@ import static org.wildfly.security.password.interfaces.ClearPassword.ALGORITHM_C
 @Path("/")
 public class Identity {
 
+    public static final String PASSWORD = "password";
+
     @Context
     private SecurityContext securityContext;
 
@@ -67,7 +69,7 @@ public class Identity {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("text/plain")
     @RolesAllowed("User")
-    public String updateUserAttributes(String json) throws RealmUnavailableException {
+    public String updateUserAttributes(String json) throws Exception {
         return updateIdentity(json);
     }
 
@@ -76,11 +78,11 @@ public class Identity {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("text/plain")
     @RolesAllowed("Admin")
-    public String updateAdminAttributes(String json) throws RealmUnavailableException {
+    public String updateAdminAttributes(String json) throws Exception {
         return updateIdentity(json);
     }
 
-    private String updateIdentity(String json) throws RealmUnavailableException {
+    private String updateIdentity(String json) throws Exception {
         return updateAttributes(new JSONObject(json.trim()).toString());
     }
 
@@ -97,7 +99,7 @@ public class Identity {
                 "You have " + identity.getAttributes().size() + " attributes:\n\n" + stringAttributes;
     }
 
-    private String updateAttributes(String json) throws RealmUnavailableException {
+    private String updateAttributes(String json) throws Exception {
         JSONObject jsonObj = new JSONObject(json.trim());
         if (jsonObj.keySet().contains(KEY_ROLES)) {
             return "Cannot modify own roles.";
@@ -107,6 +109,10 @@ public class Identity {
             Iterator<String> keys = jsonObj.keys();
             while (keys.hasNext()) {
                 String key = keys.next();
+                if (key.equalsIgnoreCase(PASSWORD)) {
+                    updatePassword(modifiableIdentity, jsonObj.getString(key));
+                    continue;
+                }
                 List<String> values = getValuesFromJson(new JSONArray(jsonObj.get(key).toString()));
                 if (attributes.containsKey(key)) {
                     attributes.copyAndReplace(key, values);
@@ -135,9 +141,5 @@ public class Identity {
         newCredentials.add(updatedPassword);
         modifiableIdentity.setCredentials(newCredentials);
         modifiableIdentity.dispose();
-    }
-
-    private void updateCredentials(String json) throws RealmUnavailableException {
-        // TODO public credentials update
     }
 }
